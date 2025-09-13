@@ -17,7 +17,10 @@ public class Player : MonoBehaviour
     [Header("Crouch")]
     public float crouchHeight = 1f;
     public float standingHeight = 2f;
-    public float crouchTransitionSpeed = 8f;
+    public float crouchTransitionSpeed = 10f;
+
+    [Tooltip("Layers considered solid for headroom check when uncrouching.")]
+    public LayerMask crouchObstructionMask = ~0;
 
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -30,9 +33,18 @@ public class Player : MonoBehaviour
     // Lean
     private float leanInput;
 
+    // Step offset handling to reduce jitter on slopes while crouched
+    private float originalStepOffset;
+
+    // Cache X/Z of center so we only control Y
+    private float centerX, centerZ;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        originalStepOffset = controller.stepOffset;
+        centerX = controller.center.x;
+        centerZ = controller.center.z;
 
         inputActions = new PlayerInputActions();
         inputActions.Player.Enable();
@@ -48,10 +60,17 @@ public class Player : MonoBehaviour
 
         // Lean inputs
         inputActions.Player.LeanLeft.performed += ctx => leanInput = -1f;
-        inputActions.Player.LeanLeft.canceled += ctx => { if (leanInput < 0) leanInput = 0f; };
+        inputActions.Player.LeanLeft.canceled += ctx => { if (leanInput < 0f) leanInput = 0f; };
 
         inputActions.Player.LeanRight.performed += ctx => leanInput = 1f;
-        inputActions.Player.LeanRight.canceled += ctx => { if (leanInput > 0) leanInput = 0f; };
+        inputActions.Player.LeanRight.canceled += ctx => { if (leanInput > 0f) leanInput = 0f; };
+    }
+
+    private void Start()
+    {
+        // Initialize camera crouch blending targets (camera handles the visuals)
+        playerCamera.SetCrouchHeightsFromCamera(); // uses its serialized standing/crouching Y or auto-infers
+        playerCamera.SetCrouchSpeed(crouchTransitionSpeed);
     }
 
     private void Update()
@@ -59,15 +78,30 @@ public class Player : MonoBehaviour
         HandleMovement();
         HandleCrouchTransition();
 
-        // Send lean value to camera
+        // Send lean to camera
         playerCamera.SetLean(leanInput);
+    }
+
+    private void LateUpdate()
+    {
+        // Update camera effects after movement so it reads settled values (reduces jitter)
+        float currentSpeed = controller.velocity.magnitude;
+        bool isMoving = new Vector2(moveInput.x, moveInput.y).sqrMagnitude > 0.0001f;
+
+        playerCamera.UpdateEffects(
+            speed: currentSpeed,
+            isRunning: isRunning,
+            isMoving: isMoving,
+            grounded: isGrounded,
+            yVelocity: velocity.y
+        );
     }
 
     private void HandleMovement()
     {
         // Ground check
         isGrounded = controller.isGrounded;
-        if (isGrounded && velocity.y < 0)
+        if (isGrounded && velocity.y < 0f)
         {
             velocity.y = -2f; // Keeps grounded
         }
@@ -81,10 +115,6 @@ public class Player : MonoBehaviour
         // Gravity
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
-
-        // Feed camera bobbing
-        float currentSpeed = new Vector2(move.x, move.z).magnitude * targetSpeed;
-        playerCamera.UpdateBobbing(currentSpeed, isRunning, moveInput != Vector2.zero, isGrounded, velocity.y);
     }
 
     private void Jump()
@@ -97,12 +127,48 @@ public class Player : MonoBehaviour
 
     private void ToggleCrouch()
     {
-        isCrouching = !isCrouching;
+        if (isCrouching)
+        {
+            // Attempt to stand up — only if there is headroom
+            if (HasHeadroomToStand())
+            {
+                isCrouching = false;
+                controller.stepOffset = originalStepOffset;
+                playerCamera.SetCrouchState(false);
+            }
+            // else remain crouched (camera stays)
+        }
+        else
+        {
+            // Go into crouch
+            isCrouching = true;
+            controller.stepOffset = 0f; // reduce slope jitter while crouched
+            playerCamera.SetCrouchState(true);
+        }
     }
+
+    private bool HasHeadroomToStand()
+    {
+        crouchObstructionMask &= ~(1 << gameObject.layer);
+
+        float radius = controller.radius - controller.skinWidth;
+
+        Vector3 bottom = transform.position + Vector3.up * radius;
+        Vector3 top = transform.position + Vector3.up * (standingHeight - radius);
+
+        return !Physics.CheckCapsule(bottom, top, radius, crouchObstructionMask, QueryTriggerInteraction.Ignore);
+    }
+
+
+
 
     private void HandleCrouchTransition()
     {
+        // Smoothly change collider height
         float targetHeight = isCrouching ? crouchHeight : standingHeight;
         controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
+
+        // Force center so the bottom stays fixed: center.y = height/2
+        controller.center = new Vector3(centerX, controller.height * 0.5f, centerZ);
     }
 }

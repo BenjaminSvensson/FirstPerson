@@ -687,6 +687,11 @@ MonoBehaviour:
   jumpTiltSpeed: 4
   landingShakeAmount: 0.1
   landingShakeSpeed: 6
+  leanAngle: 15
+  leanDistance: 0.3
+  leanSpeed: 8
+  leanLeftKey: 113
+  leanRightKey: 101
 --- !u!1 &1256968857
 GameObject:
   m_ObjectHideFlags: 0
@@ -1477,7 +1482,7 @@ SceneRoots:
   - {fileID: 2013410475}
   - {fileID: 15216422}
   - {fileID: 1906062428}
-  - {fileID: 1924742073}
   - {fileID: 1256968861}
   - {fileID: 781363390}
   - {fileID: 2071861002}
+  - {fileID: 1924742073}

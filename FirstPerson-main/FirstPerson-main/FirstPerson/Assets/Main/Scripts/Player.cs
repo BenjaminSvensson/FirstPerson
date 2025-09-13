@@ -27,6 +27,9 @@ public class Player : MonoBehaviour
     private bool isCrouching;
     private bool isGrounded;
 
+    // Lean
+    private float leanInput;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -42,12 +45,22 @@ public class Player : MonoBehaviour
 
         inputActions.Player.Jump.performed += ctx => Jump();
         inputActions.Player.Crouch.performed += ctx => ToggleCrouch();
+
+        // Lean inputs
+        inputActions.Player.LeanLeft.performed += ctx => leanInput = -1f;
+        inputActions.Player.LeanLeft.canceled += ctx => { if (leanInput < 0) leanInput = 0f; };
+
+        inputActions.Player.LeanRight.performed += ctx => leanInput = 1f;
+        inputActions.Player.LeanRight.canceled += ctx => { if (leanInput > 0) leanInput = 0f; };
     }
 
     private void Update()
     {
         HandleMovement();
         HandleCrouchTransition();
+
+        // Send lean value to camera
+        playerCamera.SetLean(leanInput);
     }
 
     private void HandleMovement()

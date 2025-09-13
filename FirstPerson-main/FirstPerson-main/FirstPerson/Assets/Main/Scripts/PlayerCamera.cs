@@ -20,6 +20,11 @@ public class PlayerCamera : MonoBehaviour
     public float landingShakeAmount = 0.2f; // impact strength
     public float landingShakeSpeed = 8f;    // how fast it stabilizes
 
+    [Header("Leaning Settings")]
+    public float leanAmount = 0.5f; // sideways offset
+    public float leanTilt = 15f;    // degrees tilt
+    public float leanSpeed = 8f;    // smoothing
+
     private float xRotation = 0f;
     private Vector2 currentMouseDelta;
 
@@ -29,7 +34,9 @@ public class PlayerCamera : MonoBehaviour
     private float landingOffset;
     private float lastYVelocity;
 
-    private float jumpTilt; // smoothed tilt value
+    private float jumpTilt;
+    private float targetLean;
+    private float currentLean;
 
     private void Start()
     {
@@ -47,11 +54,17 @@ public class PlayerCamera : MonoBehaviour
         Vector2 mouseDelta = Mouse.current.delta.ReadValue() * sensitivity * Time.deltaTime * 60f;
         currentMouseDelta = Vector2.Lerp(currentMouseDelta, mouseDelta, 1f / smoothing);
 
+        // Pitch (up/down)
         xRotation -= currentMouseDelta.y;
         xRotation = Mathf.Clamp(xRotation, -85f, 85f);
 
-        transform.localRotation = Quaternion.Euler(xRotation + jumpTilt, 0f, 0f);
+        // Yaw (left/right) — rotates the player body
         playerBody.Rotate(Vector3.up * currentMouseDelta.x);
+    }
+
+    public void SetLean(float lean)
+    {
+        targetLean = lean; // -1 left, 1 right
     }
 
     public void UpdateBobbing(float speed, bool isRunning, bool isMoving, bool grounded, float yVelocity)
@@ -75,24 +88,28 @@ public class PlayerCamera : MonoBehaviour
 
         // --- Jump tilt ---
         if (!grounded && lastYVelocity > 0.1f) // just jumped
-        {
             jumpTilt = Mathf.Lerp(jumpTilt, jumpTiltAmount, Time.deltaTime * jumpTiltSpeed);
-        }
         else
-        {
             jumpTilt = Mathf.Lerp(jumpTilt, 0, Time.deltaTime * jumpTiltSpeed);
-        }
 
         // --- Landing impact ---
         if (grounded && lastYVelocity < -3f)
-        {
             landingOffset = -landingShakeAmount; // strong dip down
-        }
+
         landingOffset = Mathf.Lerp(landingOffset, 0, Time.deltaTime * landingShakeSpeed);
         localPos.y += landingOffset;
 
-        // Apply
+        // --- Lean ---
+        currentLean = Mathf.Lerp(currentLean, targetLean, Time.deltaTime * leanSpeed);
+
+        // Apply lean purely sideways in camera local space
+        localPos += Vector3.right * (currentLean * leanAmount);
+
+        float tiltZ = -currentLean * leanTilt;
+
+        // Apply final position & rotation
         transform.localPosition = localPos;
+        transform.localRotation = Quaternion.Euler(xRotation + jumpTilt, 0f, tiltZ);
 
         // Save velocity for next frame
         lastYVelocity = yVelocity;

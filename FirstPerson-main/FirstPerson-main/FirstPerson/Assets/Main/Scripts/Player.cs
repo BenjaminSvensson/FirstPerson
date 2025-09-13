@@ -159,6 +159,24 @@ public class Player : MonoBehaviour
         return !Physics.CheckCapsule(bottom, top, radius, crouchObstructionMask, QueryTriggerInteraction.Ignore);
     }
 
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        Rigidbody body = hit.collider.attachedRigidbody;
+
+        if (body == null || body.isKinematic)
+            return;
+
+        if (hit.moveDirection.y < -0.3f)
+            return;
+
+        // Calculate push direction (horizontal only)
+        Vector3 pushDir = new Vector3(hit.moveDirection.x, 0, hit.moveDirection.z);
+
+        // Apply velocity change
+        body.linearVelocity = pushDir * 2f; // tweak multiplier for push strength
+    }
+
+
 
 
 

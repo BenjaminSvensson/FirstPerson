@@ -18,9 +18,11 @@ public class Player : MonoBehaviour
     public float crouchHeight = 1f;
     public float standingHeight = 2f;
     public float crouchTransitionSpeed = 10f;
-
-    [Tooltip("Layers considered solid for headroom check when uncrouching.")]
     public LayerMask crouchObstructionMask = ~0;
+
+    [Header("Jump Assist")]
+    public float coyoteTime = 0.15f;       // grace period after leaving ground
+    public float jumpBufferTime = 0.15f;   // grace period before landing
 
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -33,11 +35,13 @@ public class Player : MonoBehaviour
     // Lean
     private float leanInput;
 
-    // Step offset handling to reduce jitter on slopes while crouched
+    // Step offset handling
     private float originalStepOffset;
-
-    // Cache X/Z of center so we only control Y
     private float centerX, centerZ;
+
+    // Jump assist timers
+    private float lastGroundedTime;
+    private float lastJumpPressedTime;
 
     private void Awake()
     {
@@ -55,7 +59,9 @@ public class Player : MonoBehaviour
         inputActions.Player.Sprint.performed += ctx => isRunning = true;
         inputActions.Player.Sprint.canceled += ctx => isRunning = false;
 
-        inputActions.Player.Jump.performed += ctx => Jump();
+        // Record jump press time for buffering
+        inputActions.Player.Jump.performed += ctx => lastJumpPressedTime = Time.time;
+
         inputActions.Player.Crouch.performed += ctx => ToggleCrouch();
 
         // Lean inputs
@@ -68,8 +74,7 @@ public class Player : MonoBehaviour
 
     private void Start()
     {
-        // Initialize camera crouch blending targets (camera handles the visuals)
-        playerCamera.SetCrouchHeightsFromCamera(); // uses its serialized standing/crouching Y or auto-infers
+        playerCamera.SetCrouchHeightsFromCamera();
         playerCamera.SetCrouchSpeed(crouchTransitionSpeed);
     }
 
@@ -78,13 +83,21 @@ public class Player : MonoBehaviour
         HandleMovement();
         HandleCrouchTransition();
 
+        // Jump assist check — only if NOT crouching
+        if (!isCrouching &&
+            Time.time - lastGroundedTime <= coyoteTime &&
+            Time.time - lastJumpPressedTime <= jumpBufferTime)
+        {
+            Jump();
+            lastJumpPressedTime = -999f; // reset so it doesn't trigger twice
+        }
+
         // Send lean to camera
         playerCamera.SetLean(leanInput);
     }
 
     private void LateUpdate()
     {
-        // Update camera effects after movement so it reads settled values (reduces jitter)
         float currentSpeed = controller.velocity.magnitude;
         bool isMoving = new Vector2(moveInput.x, moveInput.y).sqrMagnitude > 0.0001f;
 
@@ -101,9 +114,11 @@ public class Player : MonoBehaviour
     {
         // Ground check
         isGrounded = controller.isGrounded;
-        if (isGrounded && velocity.y < 0f)
+        if (isGrounded)
         {
-            velocity.y = -2f; // Keeps grounded
+            lastGroundedTime = Time.time; // update coyote timer
+            if (velocity.y < 0f)
+                velocity.y = -2f; // Keeps grounded
         }
 
         // Move input to world space
@@ -119,74 +134,50 @@ public class Player : MonoBehaviour
 
     private void Jump()
     {
-        if (isGrounded && !isCrouching)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
+        velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
     }
 
     private void ToggleCrouch()
     {
         if (isCrouching)
         {
-            // Attempt to stand up — only if there is headroom
             if (HasHeadroomToStand())
             {
                 isCrouching = false;
                 controller.stepOffset = originalStepOffset;
                 playerCamera.SetCrouchState(false);
             }
-            // else remain crouched (camera stays)
         }
         else
         {
-            // Go into crouch
             isCrouching = true;
-            controller.stepOffset = 0f; // reduce slope jitter while crouched
+            controller.stepOffset = 0f;
             playerCamera.SetCrouchState(true);
         }
     }
 
     private bool HasHeadroomToStand()
     {
-        crouchObstructionMask &= ~(1 << gameObject.layer);
-
-        float radius = controller.radius - controller.skinWidth;
-
+        float radius = controller.radius - controller.skinWidth - 0.01f;
         Vector3 bottom = transform.position + Vector3.up * radius;
         Vector3 top = transform.position + Vector3.up * (standingHeight - radius);
-
         return !Physics.CheckCapsule(bottom, top, radius, crouchObstructionMask, QueryTriggerInteraction.Ignore);
+    }
+    
+    private void HandleCrouchTransition()
+    {
+        float targetHeight = isCrouching ? crouchHeight : standingHeight;
+        controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
+        controller.center = new Vector3(centerX, controller.height * 0.5f, centerZ);
     }
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         Rigidbody body = hit.collider.attachedRigidbody;
+        if (body == null || body.isKinematic) return;
+        if (hit.moveDirection.y < -0.3f) return;
 
-        if (body == null || body.isKinematic)
-            return;
-
-        if (hit.moveDirection.y < -0.3f)
-            return;
-
-        // Calculate push direction (horizontal only)
         Vector3 pushDir = new Vector3(hit.moveDirection.x, 0, hit.moveDirection.z);
-
-        // Apply velocity change
-        body.linearVelocity = pushDir * 2f; // tweak multiplier for push strength
-    }
-
-
-
-
-
-    private void HandleCrouchTransition()
-    {
-        // Smoothly change collider height
-        float targetHeight = isCrouching ? crouchHeight : standingHeight;
-        controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
-
-        // Force center so the bottom stays fixed: center.y = height/2
-        controller.center = new Vector3(centerX, controller.height * 0.5f, centerZ);
+        body.linearVelocity = pushDir * 2f;
     }
 }

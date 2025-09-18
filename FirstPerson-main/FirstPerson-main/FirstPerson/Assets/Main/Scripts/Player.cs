@@ -83,7 +83,7 @@ public class Player : MonoBehaviour
         HandleMovement();
         HandleCrouchTransition();
 
-        // Jump assist check — only if NOT crouching
+        // Jump assist check
         if (!isCrouching &&
             Time.time - lastGroundedTime <= coyoteTime &&
             Time.time - lastJumpPressedTime <= jumpBufferTime)

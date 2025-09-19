@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 public class PlayerCamera : MonoBehaviour
 {
@@ -8,188 +9,128 @@ public class PlayerCamera : MonoBehaviour
     public float smoothing = 5f;
     public Transform playerBody;
 
-    [Header("Bobbing Settings")]
-    public float walkBobbingSpeed = 8f;
-    public float walkBobbingAmount = 0.05f;
-    public float runBobbingSpeed = 12f;
-    public float runBobbingAmount = 0.1f;
+    [Header("FOV Settings")]
+    public Camera cam;
+    public float baseFOV = 60f;
+    public float slideFOV = 75f;
+    public float fovLerpSpeed = 6f;
 
-    [Header("Jump & Landing")]
-    public float jumpTiltAmount = 5f;       // degrees upward tilt on jump
-    public float jumpTiltSpeed = 4f;        // how fast tilt applies
-    public float landingShakeAmount = 0.2f; // impact strength
-    public float landingShakeSpeed = 8f;    // how fast it stabilizes
+    [Header("Slide Camera")]
+    public float slideCamOffset = -0.5f;
+    public float slideCamSpeed = 8f;
 
     [Header("Leaning Settings")]
-    public float leanAmount = 0.5f; // sideways offset (camera local X)
-    public float leanTilt = 15f;    // degrees tilt
-    public float leanSpeed = 8f;    // smoothing
+    public float leanAmount = 0.5f; // local X shift
+    public float leanTilt = 15f;    // roll in degrees
+    public float leanSpeed = 8f;
 
-    [Header("Crouch Camera")]
-    [Tooltip("Camera local Y when standing. Leave 0 to auto-use current.")]
-    public float cameraStandingLocalY = 0f;
-    [Tooltip("Camera local Y when crouched. Leave 0 to auto-derive from controller heights.")]
-    public float cameraCrouchingLocalY = 0f;
-    [Tooltip("Lerp speed for camera crouch movement.")]
-    public float crouchCamSpeed = 10f;
+    [Header("Kick Shake")]
+    public float shakeDuration = 0.2f;
+    public float shakeMagnitude = 0.2f;
 
+    // internals
     private float xRotation = 0f;
     private Vector2 currentMouseDelta;
 
-    private float bobTimer;
     private Vector3 startLocalPos;
 
-    private float landingOffset;
-    private float lastYVelocity;
-
-    private float jumpTilt;
-
-    // Lean
     private float targetLean;
     private float currentLean;
 
-    // Crouch camera blend handled here (decoupled from collider)
-    private float crouchBlendTarget;   // 0 = standing, 1 = crouched
-    private float crouchBlendCurrent;  // smoothed
+    private float targetYOffset;
+    private float currentYOffset;
 
-    // Cached for auto-derive
-    private float inferredCrouchOffset;
+    private float targetFOV;
+    private Coroutine shakeRoutine;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         startLocalPos = transform.localPosition;
 
-        // Auto-fill standing Y if not set
-        if (Mathf.Approximately(cameraStandingLocalY, 0f))
-            cameraStandingLocalY = startLocalPos.y;
+        if (cam == null) cam = GetComponentInChildren<Camera>();
+        if (cam != null)
+        {
+            targetFOV = baseFOV;
+            cam.fieldOfView = baseFOV;
+        }
     }
 
     private void Update()
     {
         HandleLook();
 
-        // Smooth crouch blend
-        crouchBlendCurrent = Mathf.Lerp(crouchBlendCurrent, crouchBlendTarget, Time.deltaTime * crouchCamSpeed);
-    }
+        // Smooth slide offset
+        currentYOffset = Mathf.Lerp(currentYOffset, targetYOffset, Time.deltaTime * slideCamSpeed);
 
-    private void LateUpdate()
-    {
-        // In case you want to run visual updates here; we keep UpdateEffects called by Player's LateUpdate.
-        // Intentionally left empty. You can move UpdateEffects call here if you prefer centralization.
+        // Smooth FOV lerp
+        if (cam != null)
+        {
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFOV, Time.deltaTime * fovLerpSpeed);
+        }
     }
 
     private void HandleLook()
     {
-        Vector2 mouseDelta = Mouse.current.delta.ReadValue() * sensitivity * Time.deltaTime * 60f;
+        Vector2 mouseDelta = Mouse.current != null ? Mouse.current.delta.ReadValue() : Vector2.zero;
+        mouseDelta *= sensitivity * Time.deltaTime * 60f;
         currentMouseDelta = Vector2.Lerp(currentMouseDelta, mouseDelta, 1f / Mathf.Max(1f, smoothing));
 
-        // Pitch (up/down)
         xRotation -= currentMouseDelta.y;
         xRotation = Mathf.Clamp(xRotation, -85f, 85f);
 
-        // Yaw (left/right) — rotates the player body
-        playerBody.Rotate(Vector3.up * currentMouseDelta.x);
+        if (playerBody != null)
+            playerBody.Rotate(Vector3.up * currentMouseDelta.x);
     }
 
-    // Public API called from Player
-    public void SetLean(float lean)
+    // Public API
+    public void SetLean(float lean) => targetLean = Mathf.Clamp(lean, -1f, 1f);
+
+    public void SetSliding(bool sliding)
     {
-        targetLean = lean; // -1 left, 1 right
+        targetYOffset = sliding ? slideCamOffset : 0f;
+        targetFOV = (cam != null) ? (sliding ? slideFOV : baseFOV) : targetFOV;
     }
 
-    public void SetCrouchSpeed(float speed)
-    {
-        crouchCamSpeed = Mathf.Max(0.01f, speed);
-    }
-
-    public void SetCrouchState(bool crouched)
-    {
-        crouchBlendTarget = crouched ? 1f : 0f;
-    }
-
-    // Call once at start so camera knows both heights.
-    // If cameraCrouchingLocalY is zero, we infer it from controller heights difference.
-    public void SetCrouchHeightsFromCamera()
-    {
-        if (Mathf.Approximately(cameraStandingLocalY, 0f))
-            cameraStandingLocalY = transform.localPosition.y;
-
-        // If not set explicitly, infer crouch by subtracting typical height delta
-        if (Mathf.Approximately(cameraCrouchingLocalY, 0f))
-        {
-            // Try to find the Player and CharacterController to infer delta
-            var player = GetComponentInParent<Player>();
-            if (player != null)
-            {
-                float delta = player.standingHeight - player.crouchHeight;
-                inferredCrouchOffset = -delta;
-                cameraCrouchingLocalY = cameraStandingLocalY + inferredCrouchOffset;
-            }
-            else
-            {
-                // Fallback: 0.5m drop if no player found
-                cameraCrouchingLocalY = cameraStandingLocalY - 0.5f;
-            }
-        }
-    }
-
-    // Called by Player in LateUpdate (after movement) for smooth visuals
     public void UpdateEffects(float speed, bool isRunning, bool isMoving, bool grounded, float yVelocity)
     {
-        Vector3 localPos = Vector3.zero;
-
-        // --- Base: crouch Y in camera local space (exact targets, not relative to current collider) ---
-        float baseY = Mathf.Lerp(cameraStandingLocalY, cameraCrouchingLocalY, crouchBlendCurrent);
-        localPos.y = baseY;
-
-        // --- Bobbing (only when grounded and moving) ---
-        if (isMoving && grounded)
-        {
-            float bobSpeed = isRunning ? runBobbingSpeed : walkBobbingSpeed;
-            float bobAmount = isRunning ? runBobbingAmount : walkBobbingAmount;
-
-            bobTimer += Time.deltaTime * bobSpeed;
-            localPos.y += Mathf.Sin(bobTimer) * bobAmount;
-            localPos.x += Mathf.Cos(bobTimer / 2f) * bobAmount * 0.5f;
-        }
-        else
-        {
-            bobTimer = 0f;
-        }
-
-        // --- Jump tilt ---
-        if (!grounded && lastYVelocity > 0.1f) // just jumped
-            jumpTilt = Mathf.Lerp(jumpTilt, jumpTiltAmount, Time.deltaTime * jumpTiltSpeed);
-        else
-            jumpTilt = Mathf.Lerp(jumpTilt, 0f, Time.deltaTime * jumpTiltSpeed);
-
-        // --- Landing impact ---
-        if (grounded && lastYVelocity < -3f)
-            landingOffset = -landingShakeAmount; // strong dip down
-
-        landingOffset = Mathf.Lerp(landingOffset, 0f, Time.deltaTime * landingShakeSpeed);
-        localPos.y += landingOffset;
-
-        // --- Lean ---
+        // Lean smoothing
         currentLean = Mathf.Lerp(currentLean, targetLean, Time.deltaTime * leanSpeed);
-
-        // Lean applies purely sideways in camera local space (no forward/back drift)
-        localPos += Vector3.right * (currentLean * leanAmount);
-
         float tiltZ = -currentLean * leanTilt;
+        float leanX = currentLean * leanAmount;
 
-        // Apply final position & rotation relative to the original X/Z and the computed Y
-        // Keep original startLocalPos.x/z as baseline so only our computed offsets change them
-        transform.localPosition = new Vector3(
-            startLocalPos.x + localPos.x,
-            localPos.y,
-            startLocalPos.z + localPos.z
-        );
+        // Final position relative to start
+        Vector3 localPos = startLocalPos;
+        localPos.x += leanX;
+        localPos.y += currentYOffset;
 
-        transform.localRotation = Quaternion.Euler(xRotation + jumpTilt, 0f, tiltZ);
+        transform.localPosition = localPos;
+        transform.localRotation = Quaternion.Euler(xRotation, 0f, tiltZ);
+    }
 
-        // Save velocity for next frame
-        lastYVelocity = yVelocity;
+    // Kick screen shake
+    public void DoKickShake()
+    {
+        if (shakeRoutine != null) StopCoroutine(shakeRoutine);
+        shakeRoutine = StartCoroutine(KickShake());
+    }
+
+    private IEnumerator KickShake()
+    {
+        Vector3 basePos = transform.localPosition;
+        float elapsed = 0f;
+
+        while (elapsed < shakeDuration)
+        {
+            float x = Random.Range(-1f, 1f) * shakeMagnitude;
+            float y = Random.Range(-1f, 1f) * shakeMagnitude;
+
+            transform.localPosition = basePos + new Vector3(x, y, 0f);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.localPosition = basePos;
     }
 }

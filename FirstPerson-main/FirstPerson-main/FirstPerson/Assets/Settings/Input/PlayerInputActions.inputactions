@@ -113,6 +113,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Kick",
+                    "type": "Button",
+                    "id": "509e010f-12ef-4ad6-ba7d-97324bbffe79",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -542,6 +551,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Drop",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4fe0a135-e3e7-4aae-9a2d-415f6fe4024c",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "Press",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Kick",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

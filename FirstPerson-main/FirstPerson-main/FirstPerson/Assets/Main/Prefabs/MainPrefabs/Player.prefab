@@ -322,9 +322,8 @@ MonoBehaviour:
   leanAmount: 1
   leanTilt: 15
   leanSpeed: 8
-  cameraStandingLocalY: 0
-  cameraCrouchingLocalY: 0
-  crouchCamSpeed: 8
+  slideCamOffset: -0.5
+  slideCamSpeed: 8
 --- !u!1 &6004334008115223409
 GameObject:
   m_ObjectHideFlags: 0
@@ -336,7 +335,6 @@ GameObject:
   - component: {fileID: 1552382096300746642}
   - component: {fileID: 7159768781175004684}
   - component: {fileID: 8629920834960033819}
-  - component: {fileID: 2921759308459375103}
   - component: {fileID: 673920741140604855}
   m_Layer: 0
   m_Name: Player
@@ -400,41 +398,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FirstPersonController
   playerCamera: {fileID: 1697353694811146152}
-  walkSpeed: 4
-  runSpeed: 7.5
+  cam: {fileID: 0}
+  moveSpeed: 7
   crouchSpeed: 2
   gravity: -15
   jumpHeight: 1.4
+  slideFriction: 5
+  slideBoost: 5
   crouchHeight: 1
   standingHeight: 1.8
   crouchTransitionSpeed: 8
   crouchObstructionMask:
     serializedVersion: 2
     m_Bits: 64
+  slideGravityMultiplier: 2
   coyoteTime: 0.18
   jumpBufferTime: 0.18
---- !u!114 &2921759308459375103
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6004334008115223409}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6ecf76adc363744b97dcb06846da66a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerPickup
-  pickupDistance: 3
-  pickupMask:
+  kickUpForce: 8
+  kickBackForce: 3
+  kickCooldown: 0.2
+  kickRange: 3
+  kickMask:
     serializedVersion: 2
-    m_Bits: 128
-  holdPoint: {fileID: 7462821567711550543}
-  debugRay: 1
-  rayColorNoHit: {r: 1, g: 0, b: 0, a: 1}
-  rayColorHit: {r: 0, g: 1, b: 0, a: 1}
-  hitPointColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  hitPointGizmoRadius: 0.05
+    m_Bits: 4294967295
 --- !u!114 &673920741140604855
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -498,7 +484,7 @@ MonoBehaviour:
     m_ActionName: 'Player/Attack[/Mouse/leftButton,/Keyboard/enter]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2921759308459375103}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: PlayerPickup, Assembly-CSharp
         m_MethodName: set_enabled
         m_Mode: 6

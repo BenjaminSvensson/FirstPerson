@@ -199,6 +199,15 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Kick"",
+                    ""type"": ""Button"",
+                    ""id"": ""509e010f-12ef-4ad6-ba7d-97324bbffe79"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -628,6 +637,17 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": "";Keyboard&Mouse"",
                     ""action"": ""Drop"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4fe0a135-e3e7-4aae-9a2d-415f6fe4024c"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": ""Press"",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""Kick"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1227,6 +1247,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_LeanLeft = m_Player.FindAction("LeanLeft", throwIfNotFound: true);
         m_Player_LeanRight = m_Player.FindAction("LeanRight", throwIfNotFound: true);
         m_Player_Drop = m_Player.FindAction("Drop", throwIfNotFound: true);
+        m_Player_Kick = m_Player.FindAction("Kick", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1332,6 +1353,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_LeanLeft;
     private readonly InputAction m_Player_LeanRight;
     private readonly InputAction m_Player_Drop;
+    private readonly InputAction m_Player_Kick;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1391,6 +1413,10 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Drop".
         /// </summary>
         public InputAction @Drop => m_Wrapper.m_Player_Drop;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/Kick".
+        /// </summary>
+        public InputAction @Kick => m_Wrapper.m_Player_Kick;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1453,6 +1479,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Drop.started += instance.OnDrop;
             @Drop.performed += instance.OnDrop;
             @Drop.canceled += instance.OnDrop;
+            @Kick.started += instance.OnKick;
+            @Kick.performed += instance.OnKick;
+            @Kick.canceled += instance.OnKick;
         }
 
         /// <summary>
@@ -1500,6 +1529,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Drop.started -= instance.OnDrop;
             @Drop.performed -= instance.OnDrop;
             @Drop.canceled -= instance.OnDrop;
+            @Kick.started -= instance.OnKick;
+            @Kick.performed -= instance.OnKick;
+            @Kick.canceled -= instance.OnKick;
         }
 
         /// <summary>
@@ -1884,6 +1916,13 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnDrop(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Kick" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnKick(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

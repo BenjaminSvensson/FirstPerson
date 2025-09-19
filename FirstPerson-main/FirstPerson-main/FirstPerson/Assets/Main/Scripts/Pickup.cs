@@ -41,6 +41,12 @@ public class PlayerPickup : MonoBehaviour
         inputActions.Player.Interact.performed += ctx => TryPickup();
         inputActions.Player.Drop.performed += ctx => Drop();
     }
+    private void OnDestroy()
+    {
+        inputActions.Player.Interact.performed -= ctx => TryPickup();
+        inputActions.Player.Drop.performed -= ctx => Drop();
+    }
+
 
     private void Update()
     {
@@ -72,9 +78,10 @@ public class PlayerPickup : MonoBehaviour
             }
         }
     }
-
+    
     private void TryPickup()
     {
+        Debug.Log("Gooning pickup initaaited");
         if (heldObject != null) return;
         if (cam == null) return;
 

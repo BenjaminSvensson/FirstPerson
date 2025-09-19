@@ -638,7 +638,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 2
+    m_Type: 1
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -803,7 +803,7 @@ MonoBehaviour:
   m_VolumetricShadowDimmer: 1
   m_ShadowFadeDistance: 10000
   m_UseContactShadow:
-    m_Override: 0
+    m_Override: 1
     m_UseOverride: 1
     m_Level: 0
   m_RayTracedContactShadow: 0
@@ -1332,6 +1332,36 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 287570619}
   m_Mesh: {fileID: -6146871510574282191, guid: e0c7bce69c5dda24799bd5dc8eb63bc8, type: 3}
+--- !u!1 &293131475 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6004334008115223409, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+  m_PrefabInstance: {fileID: 9040773169492972522}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &293131480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 293131475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d3dc3812de28904abf2b3685a83cba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ObjectCreator
+  holdPoint: {fileID: 314276588}
+  prefab: {fileID: 7776806486958267677, guid: f6e87cce95ea01e47bf88b988468a1bc, type: 3}
+  cam: {fileID: 1833475009}
+  minScale: 0.5
+  maxScale: 1.2
+  growSpeed: 0.8
+  placeRange: 3
+  createCooldown: 0.8
+--- !u!4 &314276588 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7462821567711550543, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+  m_PrefabInstance: {fileID: 9040773169492972522}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &321454268
 GameObject:
   m_ObjectHideFlags: 0
@@ -5245,6 +5275,18 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 673920741140604855, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: m_ActionEvents.Array.size
+      value: 23
+      objectReference: {fileID: 0}
+    - target: {fileID: 673920741140604855, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: m_ActionEvents.Array.data[22].m_ActionId
+      value: 509e010f-12ef-4ad6-ba7d-97324bbffe79
+      objectReference: {fileID: 0}
+    - target: {fileID: 673920741140604855, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: m_ActionEvents.Array.data[22].m_ActionName
+      value: 'Player/Kick[/Mouse/leftButton]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 673920741140604855, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
       propertyPath: m_ActionEvents.Array.data[3].m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 0}
@@ -5312,6 +5354,14 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 7462821567711550543, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7462821567711550543, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
       propertyPath: cam
       value: 
@@ -5371,7 +5421,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6004334008115223409, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      insertIndex: 3
+      addedObject: {fileID: 293131480}
   m_SourcePrefab: {fileID: 100100000, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

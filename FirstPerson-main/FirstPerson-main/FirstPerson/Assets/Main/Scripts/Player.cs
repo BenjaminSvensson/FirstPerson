@@ -208,10 +208,10 @@ public class Player : MonoBehaviour
     {
         lastKickTime = Time.time;
 
-        // Upward force
+        // Upward force for the player
         velocity.y = kickUpForce;
 
-        // Backward push (opposite camera forward)
+        // Backward push for the player
         kickVelocity = -cam.transform.forward * kickBackForce;
 
         // Cancel slide if sliding
@@ -222,11 +222,23 @@ public class Player : MonoBehaviour
             playerCamera.SetSliding(false);
         }
 
+        //  Apply force to hit rigidbody
+        Rigidbody rb = hitCollider.attachedRigidbody;
+        if (rb != null && !rb.isKinematic)
+        {
+            // Direction: forward from camera
+            Vector3 forceDir = cam.transform.forward;
+            float forceStrength = 2f; // tweak this value
+
+            rb.AddForceAtPosition(forceDir * forceStrength, hitPoint, ForceMode.Impulse);
+        }
+
         // Camera shake
         playerCamera.DoKickShake();
 
         Debug.Log($"Kick hit {hitCollider.name} at {hitPoint}");
     }
+
 
     private void StartSlide()
     {

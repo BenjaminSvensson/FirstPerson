@@ -24,12 +24,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 630093228536963417}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.79999995, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1552382096300746642}
+  m_Father: {fileID: 6315062102744975194}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1035435561465385518
 GameObject:
@@ -294,6 +294,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6533056471577022405}
+  - {fileID: 7462821567711550543}
   m_Father: {fileID: 1552382096300746642}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1697353694811146152
@@ -311,19 +312,17 @@ MonoBehaviour:
   sensitivity: 0.15
   smoothing: 2
   playerBody: {fileID: 1552382096300746642}
-  walkBobbingSpeed: 8
-  walkBobbingAmount: 0.08
-  runBobbingSpeed: 12
-  runBobbingAmount: 0.1
-  jumpTiltAmount: -5
-  jumpTiltSpeed: 4
-  landingShakeAmount: 0.1
-  landingShakeSpeed: 6
+  cam: {fileID: 0}
+  baseFOV: 60
+  slideFOV: 75
+  fovLerpSpeed: 6
+  slideCamOffset: -0.5
+  slideCamSpeed: 8
   leanAmount: 1
   leanTilt: 15
   leanSpeed: 8
-  slideCamOffset: -0.5
-  slideCamSpeed: 8
+  shakeDuration: 0.2
+  shakeMagnitude: 0.2
 --- !u!1 &6004334008115223409
 GameObject:
   m_ObjectHideFlags: 0
@@ -357,7 +356,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6315062102744975194}
-  - {fileID: 7462821567711550543}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &7159768781175004684
@@ -418,6 +416,8 @@ MonoBehaviour:
   kickBackForce: 3
   kickCooldown: 0.2
   kickRange: 3
+  kickRadius: 0.5
+  kickFriction: 5
   kickMask:
     serializedVersion: 2
     m_Bits: 4294967295

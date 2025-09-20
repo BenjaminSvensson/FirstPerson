@@ -1,12 +1,21 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
+
 
 [RequireComponent(typeof(CharacterController))]
 public class Player : MonoBehaviour
 {
+
+    private Vector2 lookInput;
+
+    [Header("UI")]
+    public RawImage kickIcon; 
+
     [Header("References")]
     public PlayerCamera playerCamera;
-    public Camera cam; // assign your main camera in inspector
+    public Camera cam;
+    public KickLeg kickLeg; 
 
     [Header("Movement")]
     public float moveSpeed = 7f;
@@ -37,8 +46,8 @@ public class Player : MonoBehaviour
     public LayerMask kickMask = ~0;
 
     [Header("Audio")]
-    public AudioSource audioSource; // one-shots
-    public AudioSource loopSource;  // looping (slide/create)
+    public AudioSource audioSource;
+    public AudioSource loopSource;
     public AudioClip[] walkClips;
     public AudioClip[] jumpClips;
     public AudioClip[] landClips;
@@ -98,14 +107,18 @@ public class Player : MonoBehaviour
         inputActions.Player.Crouch.canceled += ctx => { slideHeld = false; StopSlide(); };
 
         inputActions.Player.Kick.performed += ctx => DoKick();
+
+        inputActions.Player.Look.performed += ctx => lookInput = ctx.ReadValue<Vector2>();
+        inputActions.Player.Look.canceled  += ctx => lookInput = Vector2.zero;
+
     }
 
     private void Update()
     {
         HandleMovement();
         HandleCrouchTransition();
+        UpdateKickUI();
 
-        // Jump assist
         if (Time.time - lastGroundedTime <= coyoteTime &&
             Time.time - lastJumpPressedTime <= jumpBufferTime)
         {
@@ -115,9 +128,14 @@ public class Player : MonoBehaviour
 
         if (playerCamera != null) playerCamera.SetSliding(isSliding);
 
-        // If player stops sliding externally, ensure slide loop stops
         if (!isSliding && currentLoop == LoopType.Slide)
+        {
             StopLoop();
+        }
+        if (lookInput.sqrMagnitude > 0.01f)
+        {
+            Debug.Log($"Look input: {lookInput}");
+        }
     }
 
     private void LateUpdate()
@@ -125,7 +143,6 @@ public class Player : MonoBehaviour
         float currentSpeed = controller.velocity.magnitude;
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
 
-        // Footsteps (one-shots, auto-stop when not moving)
         if (isGrounded && isMoving && !isSliding)
         {
             footstepTimer -= Time.deltaTime;
@@ -198,7 +215,6 @@ public class Player : MonoBehaviour
                 isSliding = false;
                 controller.stepOffset = originalStepOffset;
                 if (playerCamera != null) playerCamera.SetSliding(false);
-                // stop slide loop if active
                 if (currentLoop == LoopType.Slide) StopLoop();
             }
         }
@@ -206,11 +222,18 @@ public class Player : MonoBehaviour
 
     private void DoKick()
     {
+        // First check cooldown
         if (Time.time < lastKickTime + kickCooldown) return;
         if (cam == null) { Debug.LogWarning("Kick: Camera not assigned!"); return; }
 
-        PlayRandomClip(kickClips);
+        // Mark the kick as started immediately
+        lastKickTime = Time.time;
 
+        // Now play sound + animate leg
+        PlayRandomClip(kickClips);
+        if (kickLeg != null) kickLeg.DoKick();
+
+        // Proceed with hit detection
         Vector3 origin = cam.transform.position - cam.transform.forward * 0.05f;
         Vector3 direction = cam.transform.forward;
         Vector3 point1 = origin;
@@ -230,9 +253,10 @@ public class Player : MonoBehaviour
         }
     }
 
+
+
     private void HandleKick(Vector3 hitPoint, Collider hitCollider)
     {
-        lastKickTime = Time.time;
         velocity.y = kickUpForce;
         kickVelocity = -cam.transform.forward * kickBackForce;
 
@@ -244,10 +268,8 @@ public class Player : MonoBehaviour
             if (currentLoop == LoopType.Slide) StopLoop();
         }
 
-        // Always play hit sound on any collider
         PlayRandomClip(kickHitClips);
 
-        // Apply force if rigidbody
         Rigidbody rb = hitCollider.attachedRigidbody;
         if (rb != null && !rb.isKinematic)
         {
@@ -267,7 +289,6 @@ public class Player : MonoBehaviour
             controller.stepOffset = 0f;
             if (playerCamera != null) playerCamera.SetSliding(true);
 
-            // Start slide loop (will replace any existing loop)
             StartLoop(LoopType.Slide, slideClips);
 
             Vector3 flatVel = new Vector3(controller.velocity.x, 0, controller.velocity.z);
@@ -319,7 +340,6 @@ public class Player : MonoBehaviour
     {
         if (loopSource == null || clips == null || clips.Length == 0) return;
 
-        // If a different loop is playing, replace it
         if (loopSource.isPlaying) loopSource.Stop();
 
         loopSource.clip = clips[Random.Range(0, clips.Length)];
@@ -346,4 +366,15 @@ public class Player : MonoBehaviour
     {
         if (currentLoop == LoopType.Create) StopLoop();
     }
+    
+    private void UpdateKickUI()
+    {
+        if (kickIcon == null) return;
+
+        bool ready = Time.time >= lastKickTime + kickCooldown;
+        Color c = kickIcon.color;
+        c.a = ready ? 1f : 0.3f;
+        kickIcon.color = c;
+    }
+
 }

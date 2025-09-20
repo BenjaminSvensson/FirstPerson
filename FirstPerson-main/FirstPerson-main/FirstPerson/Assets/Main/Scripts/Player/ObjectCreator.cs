@@ -1,13 +1,17 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class ObjectCreator : MonoBehaviour
 {
+    [Header("UI")]
+    public RawImage createIcon;
+
     [Header("References")]
     public Transform holdPoint;         
     public GameObject prefab;           
     public Camera cam;                  
-    public Player player; //  drag your Player object here in Inspector
+    public Player player; // drag your Player object here in Inspector
 
     [Header("Scaling")]
     public float minScale = 0.1f;
@@ -17,10 +21,20 @@ public class ObjectCreator : MonoBehaviour
     [Header("Placement")]
     public float placeRange = 3f;       
 
+    [Header("Visuals")]
+    [Tooltip("Starting alpha when object is first created.")]
+    [Range(0f,1f)] public float startAlpha = 0.4f;
+
+    [Header("Cooldown")]
+    public float createCooldown = 1f;   // ✅ how long to wait before creating again
+    private float lastCreateTime;
+
     private PlayerInputActions input;
     private GameObject currentObject;
     private bool isHolding;
     private float currentScale;
+    private Material currentMaterial;
+    private Color baseColor;
 
     private void Awake()
     {
@@ -33,6 +47,8 @@ public class ObjectCreator : MonoBehaviour
 
     private void Update()
     {
+        UpdateCreateUI();
+
         if (isHolding && currentObject != null)
         {
             // Grow until max
@@ -43,6 +59,16 @@ public class ObjectCreator : MonoBehaviour
                 currentObject.transform.localScale = Vector3.one * currentScale;
             }
 
+            // Fade alpha based on growth progress
+            if (currentMaterial != null)
+            {
+                float t = Mathf.InverseLerp(minScale, maxScale, currentScale);
+                float alpha = Mathf.Lerp(startAlpha, 1f, t);
+                Color c = baseColor;
+                c.a = alpha;
+                currentMaterial.color = c;
+            }
+
             // Continuously clamp position against walls/floor
             currentObject.transform.position = GetSafePlacementPosition(currentScale);
             currentObject.transform.rotation = holdPoint.rotation;
@@ -51,12 +77,28 @@ public class ObjectCreator : MonoBehaviour
 
     private void TryStartCreate()
     {
+        // Check cooldown
+        if (Time.time < lastCreateTime + createCooldown) return;
+
         if (isHolding || currentObject != null) return;
         StartCreate();
     }
+    private void UpdateCreateUI()
+    {
+        if (createIcon == null) return;
+
+        bool ready = Time.time >= lastCreateTime + createCooldown;
+        Color c = createIcon.color;
+        c.a = ready ? 1f : 0.3f;
+        createIcon.color = c;
+    }
+
 
     private void StartCreate()
     {
+        // ✅ Mark cooldown start
+        lastCreateTime = Time.time;
+
         Vector3 spawnPos = GetSafePlacementPosition(minScale);
         Quaternion spawnRot = holdPoint.rotation;
 
@@ -71,9 +113,20 @@ public class ObjectCreator : MonoBehaviour
         Collider col = currentObject.GetComponent<Collider>();
         if (col != null) col.enabled = false;
 
+        // Grab material instance for fading
+        Renderer rend = currentObject.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            currentMaterial = rend.material; // unique instance
+            baseColor = currentMaterial.color;
+            Color c = baseColor;
+            c.a = startAlpha;
+            currentMaterial.color = c;
+        }
+
         isHolding = true;
 
-        //  Start creation loop sound
+        // Start creation loop sound
         if (player != null) player.StartCreateLoop();
     }
 
@@ -88,10 +141,19 @@ public class ObjectCreator : MonoBehaviour
         Collider col = currentObject.GetComponent<Collider>();
         if (col != null) col.enabled = true;
 
+        // Force material fully opaque
+        if (currentMaterial != null)
+        {
+            Color c = baseColor;
+            c.a = 1f;
+            currentMaterial.color = c;
+        }
+
         currentObject = null;
+        currentMaterial = null;
         isHolding = false;
 
-        //  Stop creation loop sound
+        // Stop creation loop sound
         if (player != null) player.StopCreateLoop();
     }
 

@@ -36,6 +36,19 @@ public class Player : MonoBehaviour
     public float kickFriction = 5f;
     public LayerMask kickMask = ~0;
 
+    [Header("Audio")]
+    public AudioSource audioSource; // one-shots
+    public AudioSource loopSource;  // looping (e.g., block creation)
+    public AudioClip[] walkClips;
+    public AudioClip[] jumpClips;
+    public AudioClip[] landClips;
+    public AudioClip[] kickClips;
+    public AudioClip[] kickHitClips;
+    public AudioClip[] slideClips;
+    public AudioClip[] createClips;
+    public float footstepInterval = 0.5f;
+    public Vector2 pitchJitter = new Vector2(0.95f, 1.05f); // min/max pitch for variation
+
     private CharacterController controller;
     private PlayerInputActions inputActions;
     private Vector2 moveInput;
@@ -51,9 +64,6 @@ public class Player : MonoBehaviour
     private Vector3 kickVelocity;
     private float lastKickTime;
 
-    // Lean
-    private float leanInput;
-
     // Step offset handling
     private float originalStepOffset;
     private float centerX, centerZ;
@@ -61,6 +71,9 @@ public class Player : MonoBehaviour
     // Jump assist timers
     private float lastGroundedTime;
     private float lastJumpPressedTime;
+
+    // Audio timers
+    private float footstepTimer;
 
     private void Awake()
     {
@@ -81,13 +94,6 @@ public class Player : MonoBehaviour
         inputActions.Player.Crouch.canceled += ctx => { slideHeld = false; StopSlide(); };
 
         inputActions.Player.Kick.performed += ctx => DoKick();
-
-        // Lean inputs
-        inputActions.Player.LeanLeft.performed += ctx => leanInput = -1f;
-        inputActions.Player.LeanLeft.canceled += ctx => { if (leanInput < 0f) leanInput = 0f; };
-
-        inputActions.Player.LeanRight.performed += ctx => leanInput = 1f;
-        inputActions.Player.LeanRight.canceled += ctx => { if (leanInput > 0f) leanInput = 0f; };
     }
 
     private void Update()
@@ -103,8 +109,8 @@ public class Player : MonoBehaviour
             lastJumpPressedTime = -999f;
         }
 
-        playerCamera.SetLean(leanInput);
-        playerCamera.SetSliding(isSliding);
+        // Pass slide state to camera
+        if (playerCamera != null) playerCamera.SetSliding(isSliding);
     }
 
     private void LateUpdate()
@@ -112,23 +118,41 @@ public class Player : MonoBehaviour
         float currentSpeed = controller.velocity.magnitude;
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
 
-        playerCamera.UpdateEffects(
-            speed: currentSpeed,
-            isRunning: true,
-            isMoving: isMoving,
-            grounded: isGrounded,
-            yVelocity: velocity.y
-        );
+        // Footsteps
+        if (isGrounded && isMoving && !isSliding)
+        {
+            footstepTimer -= Time.deltaTime;
+            if (footstepTimer <= 0f)
+            {
+                PlayRandomClip(walkClips, 0.7f);
+                // Faster speed -> shorter interval
+                footstepTimer = footstepInterval / Mathf.Max(1f, currentSpeed);
+            }
+        }
+
+        if (playerCamera != null)
+        {
+            playerCamera.UpdateEffects(
+                speed: currentSpeed,
+                isRunning: true,
+                isMoving: isMoving,
+                grounded: isGrounded,
+                yVelocity: velocity.y
+            );
+        }
     }
 
     private void HandleMovement()
     {
-        // Ground check
+        bool wasGrounded = isGrounded;
         isGrounded = controller.isGrounded;
         if (isGrounded)
         {
             lastGroundedTime = Time.time;
             if (velocity.y < 0f) velocity.y = -2f;
+
+            if (!wasGrounded) // just landed
+                PlayRandomClip(landClips);
         }
 
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
@@ -165,11 +189,13 @@ public class Player : MonoBehaviour
         if (isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            PlayRandomClip(jumpClips);
+
             if (isSliding)
             {
                 isSliding = false;
                 controller.stepOffset = originalStepOffset;
-                playerCamera.SetSliding(false);
+                if (playerCamera != null) playerCamera.SetSliding(false);
             }
         }
     }
@@ -179,26 +205,25 @@ public class Player : MonoBehaviour
         if (Time.time < lastKickTime + kickCooldown) return;
         if (cam == null) { Debug.LogWarning("Kick: Camera not assigned!"); return; }
 
-        // Use a slight backward offset so we don't start inside walls
+        PlayRandomClip(kickClips);
+
         Vector3 origin = cam.transform.position - cam.transform.forward * 0.05f;
         Vector3 direction = cam.transform.forward;
 
-        // Capsule endpoints (tiny separation to ensure a capsule, not a sphere)
         Vector3 point1 = origin;
         Vector3 point2 = origin + direction * 0.1f;
 
-        // 1) Check immediate overlaps (nose pressed to wall)
+        // Overlap check
         Collider[] overlaps = Physics.OverlapCapsule(point1, point2, kickRadius, kickMask, QueryTriggerInteraction.Ignore);
         if (overlaps.Length > 0)
         {
-            Vector3 hitPoint = overlaps[0].ClosestPoint(origin);
-            HandleKick(hitPoint, overlaps[0]);
+            HandleKick(overlaps[0].ClosestPoint(origin), overlaps[0]);
             return;
         }
 
-        // 2) Forward capsule cast
+        // Forward cast
         if (Physics.CapsuleCast(point1, point2, kickRadius, direction,
-                                out RaycastHit hit, kickRange, kickMask, QueryTriggerInteraction.Ignore))
+            out RaycastHit hit, kickRange, kickMask, QueryTriggerInteraction.Ignore))
         {
             HandleKick(hit.point, hit.collider);
         }
@@ -208,37 +233,29 @@ public class Player : MonoBehaviour
     {
         lastKickTime = Time.time;
 
-        // Upward force for the player
+        // Player movement effects
         velocity.y = kickUpForce;
-
-        // Backward push for the player
         kickVelocity = -cam.transform.forward * kickBackForce;
 
-        // Cancel slide if sliding
         if (isSliding)
         {
             isSliding = false;
             controller.stepOffset = originalStepOffset;
-            playerCamera.SetSliding(false);
+            if (playerCamera != null) playerCamera.SetSliding(false);
         }
 
-        //  Apply force to hit rigidbody
+        // Apply force to rigidbody if present
         Rigidbody rb = hitCollider.attachedRigidbody;
         if (rb != null && !rb.isKinematic)
         {
-            // Direction: forward from camera
             Vector3 forceDir = cam.transform.forward;
-            float forceStrength = 2f; // tweak this value
-
+            float forceStrength = 10f;
             rb.AddForceAtPosition(forceDir * forceStrength, hitPoint, ForceMode.Impulse);
+            PlayRandomClip(kickHitClips);
         }
 
-        // Camera shake
-        playerCamera.DoKickShake();
-
-        Debug.Log($"Kick hit {hitCollider.name} at {hitPoint}");
+        if (playerCamera != null) playerCamera.DoKickShake();
     }
-
 
     private void StartSlide()
     {
@@ -246,7 +263,9 @@ public class Player : MonoBehaviour
         {
             isSliding = true;
             controller.stepOffset = 0f;
-            playerCamera.SetSliding(true);
+            if (playerCamera != null) playerCamera.SetSliding(true);
+
+            PlayRandomClip(slideClips);
 
             Vector3 flatVel = new Vector3(controller.velocity.x, 0, controller.velocity.z);
             if (flatVel.magnitude < 0.1f)
@@ -262,7 +281,7 @@ public class Player : MonoBehaviour
         {
             isSliding = false;
             controller.stepOffset = originalStepOffset;
-            playerCamera.SetSliding(false);
+            if (playerCamera != null) playerCamera.SetSliding(false);
         }
     }
 
@@ -281,43 +300,30 @@ public class Player : MonoBehaviour
         return !Physics.CheckCapsule(bottom, top, radius, crouchObstructionMask, QueryTriggerInteraction.Ignore);
     }
 
-    // Debug visualization of the capsule cast volume (Scene view when selected)
-    private void OnDrawGizmosSelected()
+    // ---------- Audio helpers ----------
+
+    private void PlayRandomClip(AudioClip[] clips, float volume = 1f)
     {
-        if (cam == null) return;
+        if (audioSource == null || clips == null || clips.Length == 0) return;
+        int index = Random.Range(0, clips.Length);
+        audioSource.pitch = Random.Range(pitchJitter.x, pitchJitter.y);
+        audioSource.PlayOneShot(clips[index], volume);
+    }
 
-        Vector3 origin = cam.transform.position - cam.transform.forward * 0.05f;
-        Vector3 dir = cam.transform.forward;
+    // Call these from ObjectCreator when starting/ending creation hold
+    public void StartCreateLoop()
+    {
+        if (loopSource == null || createClips == null || createClips.Length == 0) return;
+        loopSource.clip = createClips[Random.Range(0, createClips.Length)];
+        loopSource.pitch = Random.Range(pitchJitter.x, pitchJitter.y);
+        loopSource.loop = true;
+        loopSource.Play();
+    }
 
-        // small segment for capsule section
-        Vector3 point1 = origin;
-        Vector3 point2 = origin + dir * 0.1f;
-
-        // End positions after full cast
-        Vector3 end1 = point1 + dir * kickRange;
-        Vector3 end2 = point2 + dir * kickRange;
-
-        // Local camera axes for approximating ring
-        Vector3 right = cam.transform.right;
-        Vector3 up = cam.transform.up;
-
-        Gizmos.color = Color.yellow;
-
-        // Spheres at both capsule ends (start and end)
-        Gizmos.DrawWireSphere(point1, kickRadius);
-        Gizmos.DrawWireSphere(point2, kickRadius);
-        Gizmos.DrawWireSphere(end1, kickRadius);
-        Gizmos.DrawWireSphere(end2, kickRadius);
-
-        // Connect start ring to end ring (four cardinal directions) to show the tube
-        Gizmos.DrawLine(point1 + up * kickRadius, end1 + up * kickRadius);
-        Gizmos.DrawLine(point1 - up * kickRadius, end1 - up * kickRadius);
-        Gizmos.DrawLine(point1 + right * kickRadius, end1 + right * kickRadius);
-        Gizmos.DrawLine(point1 - right * kickRadius, end1 - right * kickRadius);
-
-        Gizmos.DrawLine(point2 + up * kickRadius, end2 + up * kickRadius);
-        Gizmos.DrawLine(point2 - up * kickRadius, end2 - up * kickRadius);
-        Gizmos.DrawLine(point2 + right * kickRadius, end2 + right * kickRadius);
-        Gizmos.DrawLine(point2 - right * kickRadius, end2 - right * kickRadius);
+    public void StopCreateLoop()
+    {
+        if (loopSource == null) return;
+        loopSource.Stop();
+        loopSource.clip = null;
     }
 }

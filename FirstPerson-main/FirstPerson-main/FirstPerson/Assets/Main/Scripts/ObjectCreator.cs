@@ -7,6 +7,7 @@ public class ObjectCreator : MonoBehaviour
     public Transform holdPoint;         
     public GameObject prefab;           
     public Camera cam;                  
+    public Player player; //  drag your Player object here in Inspector
 
     [Header("Scaling")]
     public float minScale = 0.1f;
@@ -14,16 +15,12 @@ public class ObjectCreator : MonoBehaviour
     public float growSpeed = 1f;
 
     [Header("Placement")]
-    public float placeRange = 3f;       // how far forward to check for walls
-
-    [Header("Cooldown")]
-    public float createCooldown = 0.5f; // seconds between spawns
+    public float placeRange = 3f;       
 
     private PlayerInputActions input;
     private GameObject currentObject;
     private bool isHolding;
     private float currentScale;
-    private float lastCreateTime;
 
     private void Awake()
     {
@@ -54,10 +51,7 @@ public class ObjectCreator : MonoBehaviour
 
     private void TryStartCreate()
     {
-        // ✅ Cooldown + holding guard
         if (isHolding || currentObject != null) return;
-        if (Time.time < lastCreateTime + createCooldown) return;
-
         StartCreate();
     }
 
@@ -78,7 +72,9 @@ public class ObjectCreator : MonoBehaviour
         if (col != null) col.enabled = false;
 
         isHolding = true;
-        lastCreateTime = Time.time; // ✅ mark cooldown
+
+        //  Start creation loop sound
+        if (player != null) player.StartCreateLoop();
     }
 
     private void ReleaseObject()
@@ -94,6 +90,9 @@ public class ObjectCreator : MonoBehaviour
 
         currentObject = null;
         isHolding = false;
+
+        //  Stop creation loop sound
+        if (player != null) player.StopCreateLoop();
     }
 
     private Vector3 GetSafePlacementPosition(float scale)
@@ -106,7 +105,7 @@ public class ObjectCreator : MonoBehaviour
         {
             Vector3 adjusted = hit.point - cam.transform.forward * radius;
 
-            // ✅ Snap to floor if surface is horizontal, otherwise keep Y
+            // Snap to floor if horizontal, else keep Y
             if (Vector3.Dot(hit.normal, Vector3.up) > 0.7f)
                 adjusted.y = hit.point.y + radius;
             else

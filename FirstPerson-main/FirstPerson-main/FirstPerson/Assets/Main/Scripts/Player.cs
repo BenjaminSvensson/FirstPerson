@@ -38,7 +38,7 @@ public class Player : MonoBehaviour
 
     [Header("Audio")]
     public AudioSource audioSource; // one-shots
-    public AudioSource loopSource;  // looping (e.g., block creation)
+    public AudioSource loopSource;  // looping (slide/create)
     public AudioClip[] walkClips;
     public AudioClip[] jumpClips;
     public AudioClip[] landClips;
@@ -47,7 +47,7 @@ public class Player : MonoBehaviour
     public AudioClip[] slideClips;
     public AudioClip[] createClips;
     public float footstepInterval = 0.5f;
-    public Vector2 pitchJitter = new Vector2(0.95f, 1.05f); // min/max pitch for variation
+    public Vector2 pitchJitter = new Vector2(0.95f, 1.05f);
 
     private CharacterController controller;
     private PlayerInputActions inputActions;
@@ -74,6 +74,10 @@ public class Player : MonoBehaviour
 
     // Audio timers
     private float footstepTimer;
+
+    // Loop control
+    private enum LoopType { None, Slide, Create }
+    private LoopType currentLoop = LoopType.None;
 
     private void Awake()
     {
@@ -109,8 +113,11 @@ public class Player : MonoBehaviour
             lastJumpPressedTime = -999f;
         }
 
-        // Pass slide state to camera
         if (playerCamera != null) playerCamera.SetSliding(isSliding);
+
+        // If player stops sliding externally, ensure slide loop stops
+        if (!isSliding && currentLoop == LoopType.Slide)
+            StopLoop();
     }
 
     private void LateUpdate()
@@ -118,14 +125,13 @@ public class Player : MonoBehaviour
         float currentSpeed = controller.velocity.magnitude;
         bool isMoving = moveInput.sqrMagnitude > 0.0001f;
 
-        // Footsteps
+        // Footsteps (one-shots, auto-stop when not moving)
         if (isGrounded && isMoving && !isSliding)
         {
             footstepTimer -= Time.deltaTime;
             if (footstepTimer <= 0f)
             {
                 PlayRandomClip(walkClips, 0.7f);
-                // Faster speed -> shorter interval
                 footstepTimer = footstepInterval / Mathf.Max(1f, currentSpeed);
             }
         }
@@ -151,8 +157,7 @@ public class Player : MonoBehaviour
             lastGroundedTime = Time.time;
             if (velocity.y < 0f) velocity.y = -2f;
 
-            if (!wasGrounded) // just landed
-                PlayRandomClip(landClips);
+            if (!wasGrounded) PlayRandomClip(landClips);
         }
 
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
@@ -160,7 +165,6 @@ public class Player : MonoBehaviour
         if (isSliding)
         {
             slideVelocity = Vector3.Lerp(slideVelocity, Vector3.zero, slideFriction * Time.deltaTime);
-
             if (slideVelocity.magnitude > 0.1f)
                 controller.Move(slideVelocity * Time.deltaTime);
             else
@@ -171,14 +175,12 @@ public class Player : MonoBehaviour
             controller.Move(move * moveSpeed * Time.deltaTime);
         }
 
-        // Apply kick push if active
         if (kickVelocity.magnitude > 0.1f)
         {
             controller.Move(kickVelocity * Time.deltaTime);
             kickVelocity = Vector3.Lerp(kickVelocity, Vector3.zero, kickFriction * Time.deltaTime);
         }
 
-        // Gravity (heavier while sliding)
         float g = gravity * (isSliding ? slideGravityMultiplier : 1f);
         velocity.y += g * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
@@ -196,6 +198,8 @@ public class Player : MonoBehaviour
                 isSliding = false;
                 controller.stepOffset = originalStepOffset;
                 if (playerCamera != null) playerCamera.SetSliding(false);
+                // stop slide loop if active
+                if (currentLoop == LoopType.Slide) StopLoop();
             }
         }
     }
@@ -209,11 +213,9 @@ public class Player : MonoBehaviour
 
         Vector3 origin = cam.transform.position - cam.transform.forward * 0.05f;
         Vector3 direction = cam.transform.forward;
-
         Vector3 point1 = origin;
         Vector3 point2 = origin + direction * 0.1f;
 
-        // Overlap check
         Collider[] overlaps = Physics.OverlapCapsule(point1, point2, kickRadius, kickMask, QueryTriggerInteraction.Ignore);
         if (overlaps.Length > 0)
         {
@@ -221,7 +223,6 @@ public class Player : MonoBehaviour
             return;
         }
 
-        // Forward cast
         if (Physics.CapsuleCast(point1, point2, kickRadius, direction,
             out RaycastHit hit, kickRange, kickMask, QueryTriggerInteraction.Ignore))
         {
@@ -232,8 +233,6 @@ public class Player : MonoBehaviour
     private void HandleKick(Vector3 hitPoint, Collider hitCollider)
     {
         lastKickTime = Time.time;
-
-        // Player movement effects
         velocity.y = kickUpForce;
         kickVelocity = -cam.transform.forward * kickBackForce;
 
@@ -242,16 +241,19 @@ public class Player : MonoBehaviour
             isSliding = false;
             controller.stepOffset = originalStepOffset;
             if (playerCamera != null) playerCamera.SetSliding(false);
+            if (currentLoop == LoopType.Slide) StopLoop();
         }
 
-        // Apply force to rigidbody if present
+        // Always play hit sound on any collider
+        PlayRandomClip(kickHitClips);
+
+        // Apply force if rigidbody
         Rigidbody rb = hitCollider.attachedRigidbody;
         if (rb != null && !rb.isKinematic)
         {
             Vector3 forceDir = cam.transform.forward;
             float forceStrength = 10f;
             rb.AddForceAtPosition(forceDir * forceStrength, hitPoint, ForceMode.Impulse);
-            PlayRandomClip(kickHitClips);
         }
 
         if (playerCamera != null) playerCamera.DoKickShake();
@@ -265,7 +267,8 @@ public class Player : MonoBehaviour
             controller.stepOffset = 0f;
             if (playerCamera != null) playerCamera.SetSliding(true);
 
-            PlayRandomClip(slideClips);
+            // Start slide loop (will replace any existing loop)
+            StartLoop(LoopType.Slide, slideClips);
 
             Vector3 flatVel = new Vector3(controller.velocity.x, 0, controller.velocity.z);
             if (flatVel.magnitude < 0.1f)
@@ -282,6 +285,8 @@ public class Player : MonoBehaviour
             isSliding = false;
             controller.stepOffset = originalStepOffset;
             if (playerCamera != null) playerCamera.SetSliding(false);
+
+            if (currentLoop == LoopType.Slide) StopLoop();
         }
     }
 
@@ -310,20 +315,35 @@ public class Player : MonoBehaviour
         audioSource.PlayOneShot(clips[index], volume);
     }
 
-    // Call these from ObjectCreator when starting/ending creation hold
-    public void StartCreateLoop()
+    private void StartLoop(LoopType type, AudioClip[] clips)
     {
-        if (loopSource == null || createClips == null || createClips.Length == 0) return;
-        loopSource.clip = createClips[Random.Range(0, createClips.Length)];
+        if (loopSource == null || clips == null || clips.Length == 0) return;
+
+        // If a different loop is playing, replace it
+        if (loopSource.isPlaying) loopSource.Stop();
+
+        loopSource.clip = clips[Random.Range(0, clips.Length)];
         loopSource.pitch = Random.Range(pitchJitter.x, pitchJitter.y);
         loopSource.loop = true;
         loopSource.Play();
+        currentLoop = type;
+    }
+
+    private void StopLoop()
+    {
+        if (loopSource != null && loopSource.isPlaying) loopSource.Stop();
+        if (loopSource != null) loopSource.clip = null;
+        currentLoop = LoopType.None;
+    }
+
+    // Public hooks for ObjectCreator to control creation loop
+    public void StartCreateLoop()
+    {
+        StartLoop(LoopType.Create, createClips);
     }
 
     public void StopCreateLoop()
     {
-        if (loopSource == null) return;
-        loopSource.Stop();
-        loopSource.clip = null;
+        if (currentLoop == LoopType.Create) StopLoop();
     }
 }

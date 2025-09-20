@@ -1352,16 +1352,27 @@ MonoBehaviour:
   holdPoint: {fileID: 314276588}
   prefab: {fileID: 7776806486958267677, guid: f6e87cce95ea01e47bf88b988468a1bc, type: 3}
   cam: {fileID: 1833475009}
+  player: {fileID: 293131486}
   minScale: 0.5
   maxScale: 1.2
   growSpeed: 0.8
   placeRange: 3
-  createCooldown: 0.8
 --- !u!4 &293131484 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1552382096300746642, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
   m_PrefabInstance: {fileID: 9040773169492972522}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &293131486 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+  m_PrefabInstance: {fileID: 9040773169492972522}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 293131475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0607f4d0be95bd4f90f0b1f23c79b04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirstPersonController
 --- !u!4 &314276588 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7462821567711550543, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
@@ -5710,9 +5721,81 @@ PrefabInstance:
       value: 193
       objectReference: {fileID: 0}
     - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: jumpClips.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: kickClips.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: landClips.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: walkClips.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: slideClips.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: createClips.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
       propertyPath: slideGravityMultiplier
       value: 2.2
       objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'jumpClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 72984d0f85e2dff449c113e81e64ffdd, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'kickClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 6a3e6cfd10e1696489e9b1637197bc70, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: kickHitClips.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'landClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 29213193163a38642be71d253b865b92, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'walkClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 9f39b8ac6f98c8b418fb085ac4fcc6ad, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'walkClips.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 27ef3a8b4a0d77747969b54c1f1274e1, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'walkClips.Array.data[2]'
+      value: 
+      objectReference: {fileID: 8300000, guid: d7f29c19a69d01f4b975c254c091f0af, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'slideClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 2b7a513ed477e1743928531d6b4e4f35, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'slideClips.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 0c56d3794392e804a8fabf745772cc40, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'createClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: bdb1a7ec4c7dacf438fe91b1a79f9aa7, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'createClips.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 60187c529f1618040a24a47c6770844f, type: 3}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: 'kickHitClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 15d524016fd778f458224ed2ea2bd28b, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

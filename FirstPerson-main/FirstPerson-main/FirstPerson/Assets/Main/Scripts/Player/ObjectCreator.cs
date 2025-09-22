@@ -7,6 +7,8 @@ public class ObjectCreator : MonoBehaviour
     [Header("UI")]
     public RawImage createIcon;
 
+    public CursorController cursorController;
+
     [Header("References")]
     public Transform holdPoint;         
     public GameObject prefab;           
@@ -72,7 +74,20 @@ public class ObjectCreator : MonoBehaviour
             // Continuously clamp position against walls/floor
             currentObject.transform.position = GetSafePlacementPosition(currentScale);
             currentObject.transform.rotation = holdPoint.rotation;
+
+            if (cursorController != null)
+            {
+                bool ready = Time.time >= lastCreateTime + createCooldown;
+                cursorController.SetCreateReady(ready);
+            }
+
         }
+        if (cursorController != null)
+        {
+            bool ready = Time.time >= lastCreateTime + createCooldown;
+            cursorController.SetCreateReady(ready);
+        }
+
     }
 
     private void TryStartCreate()

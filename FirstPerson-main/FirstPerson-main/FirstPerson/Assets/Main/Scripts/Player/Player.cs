@@ -8,6 +8,7 @@ public class Player : MonoBehaviour
 {
 
     private Vector2 lookInput;
+    public CursorController cursorController;
 
     [Header("UI")]
     public RawImage kickIcon; 
@@ -136,6 +137,30 @@ public class Player : MonoBehaviour
         {
             Debug.Log($"Look input: {lookInput}");
         }
+
+        if (cursorController != null)
+        {
+            bool ready = Time.time >= lastKickTime + kickCooldown;
+
+            // Check if kick would hit something
+            bool viable = false;
+            if (ready && cam != null)
+            {
+                Vector3 origin = cam.transform.position - cam.transform.forward * 0.05f;
+                Vector3 direction = cam.transform.forward;
+                Vector3 point1 = origin;
+                Vector3 point2 = origin + direction * 0.1f;
+
+                // overlap or cast
+                Collider[] overlaps = Physics.OverlapCapsule(point1, point2, kickRadius, kickMask, QueryTriggerInteraction.Ignore);
+                if (overlaps.Length > 0) viable = true;
+                else if (Physics.CapsuleCast(point1, point2, kickRadius, direction, out RaycastHit hit, kickRange, kickMask, QueryTriggerInteraction.Ignore))
+                    viable = true;
+            }
+
+            cursorController.SetKickViable(viable);
+        }
+
     }
 
     private void LateUpdate()

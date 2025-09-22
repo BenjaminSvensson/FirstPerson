@@ -1880,6 +1880,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectCreator
   createIcon: {fileID: 1846825317}
+  cursorController: {fileID: 1132634922}
   holdPoint: {fileID: 314276588}
   prefab: {fileID: 7776806486958267677, guid: f6e87cce95ea01e47bf88b988468a1bc, type: 3}
   cam: {fileID: 1833475009}
@@ -4847,6 +4848,7 @@ GameObject:
   - component: {fileID: 1132634919}
   - component: {fileID: 1132634921}
   - component: {fileID: 1132634920}
+  - component: {fileID: 1132634922}
   m_Layer: 5
   m_Name: Chrosshair
   m_TagString: Untagged
@@ -4886,7 +4888,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.7735849, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -4911,6 +4913,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1132634918}
   m_CullTransparentMesh: 1
+--- !u!114 &1132634922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1132634918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec012a26994f00c45a13b25522341d22, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CursorController
+  cursorImage: {fileID: 1132634920}
+  readyColor: {r: 1, g: 1, b: 1, a: 1}
+  cooldownColor: {r: 1, g: 0, b: 0, a: 1}
+  inactiveAlpha: 0.3
 --- !u!1 &1147822590
 GameObject:
   m_ObjectHideFlags: 0
@@ -8103,6 +8121,10 @@ PrefabInstance:
       propertyPath: kickMask.m_Bits
       value: 193
       objectReference: {fileID: 0}
+    - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
+      propertyPath: cursorController
+      value: 
+      objectReference: {fileID: 1132634922}
     - target: {fileID: 8629920834960033819, guid: 3d57065f5c56b584b815e6f3f4780b24, type: 3}
       propertyPath: jumpClips.Array.size
       value: 1
